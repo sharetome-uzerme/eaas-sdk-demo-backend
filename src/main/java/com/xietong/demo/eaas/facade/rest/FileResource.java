@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.websocket.server.PathParam;
 import java.io.*;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -89,7 +90,7 @@ public class FileResource {
 	@ApiOperation(value = "文件内容获取", notes = "返回值为 code")
 	@ApiResponses(value = { @ApiResponse(code = 200, message = "成功"), @ApiResponse(code = 400, message = "失败") })
 	public void downloadFile(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
-				@ApiParam(name = "fileId", value = "EaaS系统内部文件ID") @RequestParam(value = "fileId") String fileId) throws Exception {
+				@ApiParam(name = "fileId", value = "EaaS系统内部文件ID") @PathParam(value = "fileId") String fileId) throws Exception {
 
 		if (logger.isInfoEnabled()) {
 			logger.info("prepareDownloadResponse fileId:" + fileId );
@@ -97,13 +98,10 @@ public class FileResource {
 		// third part self code start
 		// TODO
 		// third part self code end
-		if (fileId != null) {
-			File targetFile = fileService.downloadFile(fileId);
-			prepareDownloadResponse(httpResponse, targetFile);
-			httpResponse.setStatus(200);
-		} else {
-			httpResponse.setStatus(400);
-		}
+		File targetFile = fileService.downloadFile(fileId);
+		prepareDownloadResponse(httpResponse, targetFile);
+		httpResponse.setStatus(200);
+
 		return;
 	}
 

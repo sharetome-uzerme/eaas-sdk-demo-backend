@@ -3,15 +3,11 @@ package com.xietong.demo.eaas.service.impl;
 import com.xietong.demo.eaas.service.FileService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -77,12 +73,25 @@ public class FileServiceImpl implements FileService {
 			}
 			return file;
 		}
+
 		if (logger.isInfoEnabled()) {
 			logger.info("open default demo file");
 		}
-		Resource resource = new ClassPathResource(demoFilePath);
+
+
 		try {
-			file = resource.getFile();
+			// 开始读取文件内容
+			InputStream is = this.getClass().getResourceAsStream("/" + demoFilePath);
+
+			file = File.createTempFile("EaaS-Demo", ".docx");
+			OutputStream outputStream = new FileOutputStream(file);
+			int bytesRead = 0;
+			byte[] buffer = new byte[1024];
+			while ((bytesRead = is.read(buffer, 0, 1024)) != -1) {
+				outputStream.write(buffer, 0, bytesRead);
+			}
+			outputStream.close();
+			is.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
