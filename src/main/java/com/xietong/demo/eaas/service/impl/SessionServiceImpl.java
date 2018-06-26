@@ -35,6 +35,12 @@ public class SessionServiceImpl implements SessionService {
 	@Value("${eaas.config.server.dns}")
 	private String eaasServerDomain;
 
+	final boolean  isReadOnlyMode = false;      // user open file with read auth only
+	final boolean canSaveFile = true;          // user open app can save file
+	final boolean canExportFile = false;      // user open app can save as (to new file)
+	final boolean canCopyPasteOut = false;    // user open app can copy (paste out content)
+	final boolean isDFSMode = false;           // user open app DFS depend on (tenant and app config)
+
 	@Autowired
 	IEAASServiceAPI eaasServiceAPIRestProxy;
 
@@ -175,20 +181,20 @@ public class SessionServiceImpl implements SessionService {
 		sessionStartEventDTO.setAppId(request.getAppId());
 		sessionStartEventDTO.setUserId(request.getUserId());
 
-		sessionStartEventDTO.setIsReadOnlyMode(true); // user open file with read auth only
-		sessionStartEventDTO.setCanSaveFile(false);  // user open app can save file
-		sessionStartEventDTO.setCanExportFile(false);// user open app can save as (to new file)
-		sessionStartEventDTO.setCanCopyPasteOut(false);// user open app can copy (paste out content)
-		sessionStartEventDTO.setIsDFSMode(false);// user open app DFS depend on (tenant and app config)
+		sessionStartEventDTO.setIsReadOnlyMode(isReadOnlyMode); // user open file with read auth only
+		sessionStartEventDTO.setCanSaveFile(canSaveFile);  // user open app can save file
+		sessionStartEventDTO.setCanExportFile(canExportFile);// user open app can save as (to new file)
+		sessionStartEventDTO.setCanCopyPasteOut(canCopyPasteOut);// user open app can copy (paste out content)
+		sessionStartEventDTO.setIsDFSMode(isDFSMode);// user open app DFS depend on (tenant and app config)
 
 		if (request instanceof CreateSessionForOpenFileWithAppDTO) {
 			sessionStartEventDTO.setFileId(((CreateSessionForOpenFileWithAppDTO) request).getFileId());
 			String fileName = ((CreateSessionForOpenFileWithAppDTO) request).getFileName();
 			sessionStartEventDTO.setFileName(fileName);
 			sessionStartEventDTO.setIsReadOnlyMode(((CreateSessionForOpenFileWithAppDTO) request).getReadOnly());
-			sessionStartEventDTO.setCanSaveFile(false);
-			sessionStartEventDTO.setCanExportFile(false);
-			sessionStartEventDTO.setCanCopyPasteOut(false);
+			sessionStartEventDTO.setCanSaveFile(canSaveFile);
+			sessionStartEventDTO.setCanExportFile(canExportFile);
+			sessionStartEventDTO.setCanCopyPasteOut(canCopyPasteOut);
 		}
 
 		return sessionStartEventDTO;
