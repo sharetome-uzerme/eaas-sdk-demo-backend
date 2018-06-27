@@ -6,7 +6,9 @@
     <groupId>com.xietong.phoenix</groupId>
     <artifactId>eaas-demo-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+
     <packaging>jar</packaging>
+    <!--<packaging>war</packaging>-->
 
     <description>Eaas third party service demo</description>
     <name>eaas-demo-service</name>
@@ -25,6 +27,13 @@
     </properties>
 
     <dependencies>
+        <!--tomcat-->
+        <!--<dependency>-->
+            <!--<groupId>org.springframework.boot</groupId>-->
+            <!--<artifactId>spring-boot-starter-tomcat</artifactId>-->
+            <!--<scope>provided</scope>-->
+        <!--</dependency>-->
+
         <!-- for spring boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

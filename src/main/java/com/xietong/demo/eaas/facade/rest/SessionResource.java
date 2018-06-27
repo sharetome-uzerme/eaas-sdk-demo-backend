@@ -1,6 +1,5 @@
 package com.xietong.demo.eaas.facade.rest;
 
-import com.xietong.demo.eaas.domain.Session;
 import com.xietong.demo.eaas.facade.dto.*;
 import com.xietong.demo.eaas.service.SessionService;
 import com.xietong.demo.util.ResponseUtil;
@@ -100,53 +99,6 @@ public class SessionResource {
 		return new ResponseDTO();
 	}
 
-	/**
-	 * EaaS Session发生变化时，调用该结果。
-	 * 对应于mongodb中client_configuration配置的ParticipantStatusChange回调地址。
-	 *
-	 * @param sessionUserStatusUpdateDTO
-	 * @return
-	 * @throws Exception
-	 */
-	@ResponseBody
-	@RequestMapping(value = "/api/session/status", method = { RequestMethod.POST, RequestMethod.PUT }, consumes = "application/json")
-	@ApiOperation(value = "更新会话用户列表状态（加入、离开、关闭）", response = ResponseDTO.class)
-	public ResponseDTO sessionStatusChange(
-			@ApiParam(value = "状态更新数据", required = true) @RequestBody SessionUserStatusUpdateDTO sessionUserStatusUpdateDTO) throws Exception {
-		if (logger.isInfoEnabled()) {
-			logger.info("sessionStatusChange:" + sessionUserStatusUpdateDTO);
-		}
-
-		inputCheck(sessionUserStatusUpdateDTO);
-
-		changeUserStatus(sessionUserStatusUpdateDTO);
-
-		return ResponseUtil.buildResponseDTO(true);
-	}
-
-	private void changeUserStatus(SessionUserStatusUpdateDTO sessionUserStatusUpdateDTO) {
-		inputCheck(sessionUserStatusUpdateDTO);
-
-		String eaasSessionId = sessionUserStatusUpdateDTO.getCorrelatedSessionId();
-		if (eaasSessionId == null) {
-			return;
-		}
-		Session session = sessionService.getSession(sessionUserStatusUpdateDTO.getCorrelatedSessionId());
-		if (sessionUserStatusUpdateDTO.getCorrelatedSessionId() != null && session != null) {
-			if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("join")) {
-				sessionService.joinSession(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
-			} else if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("leave")) {
-				sessionService.leaveSession(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
-			} else if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("close")) {
-				if (logger.isInfoEnabled()) {
-					logger.info("close session:" + eaasSessionId);
-				}
-				if (session != null) {
-					sessionService.closeSession(session.getSessionId());
-				}
-			}
-		}
-	}
 
 	private void inputCheck(SessionUserStatusUpdateDTO sessionUserStatusUpdateDTO) {
 		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO, "sessionUserStatusUpdateDTO is required");
