@@ -2,17 +2,11 @@ package com.xietong.demo.eaas.service.impl;
 
 import com.xietong.demo.eaas.domain.Session;
 import com.xietong.demo.eaas.domain.SessionUser;
-import com.xietong.demo.eaas.domain.exception.CreateSessionFailException;
 import com.xietong.demo.eaas.facade.dto.*;
+import com.xietong.demo.eaas.service.EAASService;
 import com.xietong.demo.eaas.service.SessionService;
 import com.xietong.demo.eaas.service.SessionStoreService;
-import com.xietong.phoenix.eaas.service.api.IEAASServiceAPI;
-import com.xietong.phoenix.eaas.service.api.IEAASServiceAPIResult;
-import com.xietong.phoenix.eaas.service.api.builder.session.CreateSessionAPIBuilder;
-import com.xietong.phoenix.eaas.service.api.builder.session.JoinSessionAPIBuilder;
-import com.xietong.phoenix.eaas.service.core.caller.EAASServiceAPIResult;
-import com.xietong.phoenix.eaas.service.core.caller.param.EAASServiceAPICallParam;
-import com.xietong.phoenix.eaas.service.core.common.Constants;
+import com.xietong.demo.eaas.service.SessionUserService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,22 +24,15 @@ public class SessionServiceImpl implements SessionService {
 
 	@Value("${eaas.config.clientId}")
 	String clientId;
-	@Value("${eaas.config.clientSecret}")
-	String clientSecret;
-	@Value("${eaas.config.server.dns}")
-	private String eaasServerDomain;
-
-	final boolean  isReadOnlyMode = false;      // user open file with read auth only
-	final boolean canSaveFile = true;          // user open app can save file
-	final boolean canExportFile = false;      // user open app can save as (to new file)
-	final boolean canCopyPasteOut = false;    // user open app can copy (paste out content)
-	final boolean isDFSMode = false;           // user open app DFS depend on (tenant and app config)
-
-	@Autowired
-	IEAASServiceAPI eaasServiceAPIRestProxy;
 
 	@Autowired
 	SessionStoreService sessionStoreService;
+
+	@Autowired
+	SessionUserService sessionUserService;
+
+	@Autowired
+	EAASService eaasService;
 
 	@Override
 	public SessionCreateACK createSessionForOpenApp(CreateSessionForOpenAppDTO request) {
@@ -53,7 +40,7 @@ public class SessionServiceImpl implements SessionService {
 			logger.info("createSessionForOpenApp:" + request);
 		}
 		// create EAAS session
-		SessionInfoDTO sessionInfoDTO = createEaaSSession(request);
+		SessionInfoDTO sessionInfoDTO = eaasService.createEaaSSession(request);
 		if (sessionInfoDTO == null){
 			return null;
 		}
@@ -73,7 +60,7 @@ public class SessionServiceImpl implements SessionService {
 			logger.info("createSessionForOpenFile");
 		}
 		// create EAAS session
-		SessionInfoDTO sessionInfoDTO = createEaaSSession(request);
+		SessionInfoDTO sessionInfoDTO = eaasService.createEaaSSession(request);
 
 		// create session user info
 		String userName = "test" + request.getUserId();
@@ -111,47 +98,31 @@ public class SessionServiceImpl implements SessionService {
 	}
 
 	@Override
-	public SessionInfoDTO joinSession(Long sessionId, String userId) {
+	public SessionJoinACK joinSession(Long sessionId, String userId) {
 		Session session = getSession(sessionId);
 		if (session != null) {
 			// call EaaS service
 			SessionJoinEventDTO sessionJoinEventDTO = buildJoinSessionDTO(userId, session.getCorrelatedSessionId());
-			SessionInfoDTO sessionInfoDTO = joinEaaSSession(sessionJoinEventDTO);
+			sessionUserService.participantJoin(sessionId, userId);
+			SessionInfoDTO sessionInfoDTO = eaasService.joinEaaSSession(sessionJoinEventDTO);
 			if (sessionInfoDTO != null) {
-				SessionUser sessionUser = session.getSessionUser(userId);
-				sessionUser.setStatus(SessionUser.Status.Online);
-				sessionStoreService.writeSession(sessionId, session);
-
-				return sessionInfoDTO;
-			} else{
-				sessionStoreService.removeSession(sessionId);
-				return null;
+				SessionJoinACK sessionJoinACK = populateJoinSessionACK(sessionInfoDTO, session.getSessionId());
+				return sessionJoinACK;
 			}
 		}
-
 		return null;
 	}
 
 	@Override
-	public void leaveSession(Long sessionId, String userId) {
+	public void forceCloseSession(Long sessionId) {
 		Session session = sessionStoreService.readSession(sessionId);
 		if (session == null) {
 			logger.warn("Session is not exists :: (" + sessionId + ")");
 			return;
 		}
-		session.removeSessionUser(userId);
-		sessionStoreService.writeSession(sessionId, session);
-	}
-
-	@Override
-	public void closeSession(Long sessionId) {
-		Session session = sessionStoreService.readSession(sessionId);
-		if (session == null) {
-			logger.warn("Session is not exists :: (" + sessionId + ")");
-			return;
-		}
-
-		sessionStoreService.removeSession(sessionId);
+		ForceCloseSessionEventDTO forceCloseSessionEvent = new ForceCloseSessionEventDTO();
+		forceCloseSessionEvent.setSessionId(session.getCorrelatedSessionId());
+		eaasService.forceCloseEAASSession(forceCloseSessionEvent);
 	}
 
 	@Override
@@ -167,37 +138,9 @@ public class SessionServiceImpl implements SessionService {
 	private SessionJoinEventDTO buildJoinSessionDTO(String userId, String sessionId) {
 		SessionJoinEventDTO sessionJoinEventDTO = new SessionJoinEventDTO();
 		sessionJoinEventDTO.setClientId(clientId);
-		sessionJoinEventDTO.setClientSecret(clientSecret);
 		sessionJoinEventDTO.setUserId(userId);
 		sessionJoinEventDTO.setSessionId(sessionId);
 		return sessionJoinEventDTO;
-	}
-
-	private SessionStartEventDTO buildCreateSessionDTO(CreateSessionForOpenAppDTO request) {
-		// create EAAS session
-		SessionStartEventDTO sessionStartEventDTO = new SessionStartEventDTO();
-
-		sessionStartEventDTO.setType(SESSION_TYPE_EDITING);
-		sessionStartEventDTO.setAppId(request.getAppId());
-		sessionStartEventDTO.setUserId(request.getUserId());
-
-		sessionStartEventDTO.setIsReadOnlyMode(isReadOnlyMode); // user open file with read auth only
-		sessionStartEventDTO.setCanSaveFile(canSaveFile);  // user open app can save file
-		sessionStartEventDTO.setCanExportFile(canExportFile);// user open app can save as (to new file)
-		sessionStartEventDTO.setCanCopyPasteOut(canCopyPasteOut);// user open app can copy (paste out content)
-		sessionStartEventDTO.setIsDFSMode(isDFSMode);// user open app DFS depend on (tenant and app config)
-
-		if (request instanceof CreateSessionForOpenFileWithAppDTO) {
-			sessionStartEventDTO.setFileId(((CreateSessionForOpenFileWithAppDTO) request).getFileId());
-			String fileName = ((CreateSessionForOpenFileWithAppDTO) request).getFileName();
-			sessionStartEventDTO.setFileName(fileName);
-			sessionStartEventDTO.setIsReadOnlyMode(((CreateSessionForOpenFileWithAppDTO) request).getReadOnly());
-			sessionStartEventDTO.setCanSaveFile(canSaveFile);
-			sessionStartEventDTO.setCanExportFile(canExportFile);
-			sessionStartEventDTO.setCanCopyPasteOut(canCopyPasteOut);
-		}
-
-		return sessionStartEventDTO;
 	}
 
 	private SessionCreateACK populateCreateSessionACK(SessionInfoDTO sessionInfoDTO, Long sessionId) {
@@ -214,58 +157,16 @@ public class SessionServiceImpl implements SessionService {
 		return sessionCreateACK;
 	}
 
-	public SessionInfoDTO createEaaSSession(CreateSessionForOpenAppDTO request) {
-		SessionStartEventDTO sessionStartEventDTO = buildCreateSessionDTO(request);
-
-		CreateSessionAPIBuilder builder = new CreateSessionAPIBuilder()
-				.resourceIp(eaasServerDomain)
-				.appId(sessionStartEventDTO.getAppId())
-				.userId(sessionStartEventDTO.getUserId())
-				.groupId(sessionStartEventDTO.getGroupId())
-				.fileId(sessionStartEventDTO.getFileId())
-				.fileVersion(sessionStartEventDTO.getFileVersion())
-				.fileName(sessionStartEventDTO.getFileName())
-				.filePath(sessionStartEventDTO.getFilePath())
-				.type(sessionStartEventDTO.getType())
-				.appUrl(sessionStartEventDTO.getAppUrl())
-				.isReadOnlyMode(sessionStartEventDTO.getIsReadOnlyMode())
-				.isDFSMode(sessionStartEventDTO.getIsDFSMode())
-				.canSaveFile(sessionStartEventDTO.getCanSaveFile())
-				.canExportFile(sessionStartEventDTO.getCanExportFile())
-				.canCopyPasteOut(sessionStartEventDTO.getCanCopyPasteOut());
-
-		IEAASServiceAPIResult<String> result = eaasServiceAPIRestProxy.callApi(builder.build());
-		return parseResponse(eaasServerDomain + Constants.EAAS_SESSIONMGR_URL, (EAASServiceAPIResult) result);
-	}
-
-	private SessionInfoDTO joinEaaSSession(SessionJoinEventDTO event) {
-		logger.info("joinEaaSSession.event=" + event);
-
-		EAASServiceAPICallParam param = new JoinSessionAPIBuilder()
-				.resourceIp(eaasServerDomain)
-				.sessionId(event.getSessionId())
-				.userId(event.getUserId())
-				.build();
-
-		IEAASServiceAPIResult<String> result = eaasServiceAPIRestProxy.callApi(param);
-
-		return parseResponse(eaasServerDomain + Constants.EAAS_SESSIONMGR_URL, (EAASServiceAPIResult) result);
-	}
-
-
-	private SessionInfoDTO parseResponse(String sessionUrl, EAASServiceAPIResult result) {
-		SessionInfoDTO sessionInfoDTO = new SessionInfoDTO();
-		if (result.isSuccess()) {
-			Map<String, Object> map = (Map<String, Object>) result.getData();
-			sessionInfoDTO.setSessionId((String) map.get("sessionId"));
-			sessionInfoDTO.setGwHost((String) map.get("gwHost"));
-			sessionInfoDTO.setGwPort((Integer) map.get("gwPort"));
-			sessionInfoDTO.setMcuUrl((String) map.get("mcuUrl"));
-			sessionInfoDTO.setReadOnly((Boolean) map.get("readOnly"));
-			sessionInfoDTO.setToken(result.getToken());
-			sessionInfoDTO.setSessionMgrUrl(sessionUrl);
-			return sessionInfoDTO;
-		}
-		throw new CreateSessionFailException(Integer.valueOf(result.getErrorCode()), result.getMessage());
+	private SessionJoinACK populateJoinSessionACK(SessionInfoDTO sessionInfoDTO, Long sessionId) {
+		SessionJoinACK sessionJoinACK = new SessionJoinACK();
+		sessionJoinACK.setSessionId(sessionId);
+		sessionJoinACK.setCorrelatedSessionId(sessionInfoDTO.getSessionId());
+		sessionJoinACK.setGwHost(sessionInfoDTO.getGwHost());
+		sessionJoinACK.setGwPort(sessionInfoDTO.getGwPort());
+		sessionJoinACK.setMcuUrl(sessionInfoDTO.getMcuUrl());
+		sessionJoinACK.setToken(sessionInfoDTO.getToken());
+		sessionJoinACK.setClientId(clientId);
+		sessionJoinACK.setSessionMgrUrl(sessionInfoDTO.getSessionMgrUrl());
+		return sessionJoinACK;
 	}
 }

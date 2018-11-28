@@ -4,8 +4,8 @@ import com.xietong.demo.eaas.domain.Session;
 import com.xietong.demo.eaas.domain.SessionUser;
 import com.xietong.demo.eaas.facade.dto.*;
 import com.xietong.demo.eaas.service.SessionService;
-import com.xietong.demo.eaas.service.SessionStoreService;
 import com.xietong.demo.eaas.service.SessionUserService;
+import com.xietong.demo.eaas.service.UserService;
 import com.xietong.demo.util.ResponseUtil;
 import com.xietong.phoenix.common.util.ParamValidateUtils;
 import io.swagger.annotations.Api;
@@ -49,8 +49,7 @@ public class SessionUserResource {
 	SessionUserService sessionUserService;
 
 	@Autowired
-	SessionStoreService sessionStoreService;
-
+	UserService userService;
 	/**
 	 * EaaS Session发生变化时，调用该结果。
 	 * 对应于mongodb中client_configuration配置的ParticipantStatusChange回调地址。
@@ -75,15 +74,15 @@ public class SessionUserResource {
 		Session session = sessionService.getSession(sessionUserStatusUpdateDTO.getCorrelatedSessionId());
 		if (sessionUserStatusUpdateDTO.getCorrelatedSessionId() != null && session != null) {
 			if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("join")) {
-				sessionService.joinSession(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
+				sessionUserService.participantJoinConfirm(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
 			} else if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("leave")) {
-				sessionService.leaveSession(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
+				sessionUserService.participantLeave(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
 			} else if (sessionUserStatusUpdateDTO.getStatus().equalsIgnoreCase("close")) {
 				if (logger.isInfoEnabled()) {
 					logger.info("close session:" + eaasSessionId);
 				}
 				if (session != null) {
-					sessionService.closeSession(session.getSessionId());
+					sessionUserService.participantSessionClose(session.getSessionId(), sessionUserStatusUpdateDTO.getUserId());
 				}
 			}
 		}
@@ -162,28 +161,6 @@ public class SessionUserResource {
 		return new ResponseDTO(SessionUserDTOs);
 	}
 
-	@ResponseBody
-	@RequestMapping(value = "/api/session/user/transform", method = {RequestMethod.POST,RequestMethod.PUT}, consumes = "application/json")
-	@ApiOperation(value = "控制权转换", response = ResponseDTO.class)
-	public ResponseDTO SessionUserTransform(@ApiParam(value = "控制权转换信息", required = true) @RequestBody SessionUserTransformDTO sessionUserTransformDTO) throws Exception {
-		if (logger.isInfoEnabled()) {
-			logger.info("SessionUserTransform:");
-		}
-		if (sessionUserTransformDTO == null || sessionUserTransformDTO.getSessionId() == null
-				|| sessionUserTransformDTO.getFromUserId() == null || sessionUserTransformDTO.getToUserId() == null) {
-			return null;
-		}
-
-		if (sessionUserTransformDTO.getSessionId() != null) {
-			sessionUserService.participantTransform(Long.valueOf(sessionUserTransformDTO.getSessionId()),
-					sessionUserTransformDTO.getFromUserId(),
-					sessionUserTransformDTO.getToUserId()
-			);
-		}
-		return new ResponseDTO();
-	}
-
-
 	private List<SessionUser> buildSessionUserList(SessionInviteRequestDTO inviteRequest) {
 		List<SessionUser> SessionUsers = new ArrayList<>();
 		for (SessionUserDTO sessionUserDTO : inviteRequest.getInviterList()) {
@@ -236,5 +213,81 @@ public class SessionUserResource {
 		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getCorrelatedSessionId(), "correlatedSessionId is required");
 		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getStatus(), "status is required");
 		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getUserId() , "userId is required");
+	}
+
+	/**
+	 * 用于Eaas通过关键字查询用户信息。
+	 * 对应于mongodb中client_configuration配置的SearchUsersBykey回调地址
+	 *
+	 * @param correlationId
+	 * @param searchKey
+	 * @return
+	 * @throws Exception
+	 */
+	@ApiOperation(value = "用户查询包含匿名用户", httpMethod = "GET", response = ResponseDTO.class, notes = "获得用户简单信息包含匿名用户")
+	@RequestMapping(value = "/api/user/list/by-key", method = RequestMethod.GET)
+	@ResponseBody
+	public ResponseDTO searchUserByKey(
+			@RequestHeader(value = "correlationId", required = false) String correlationId,
+			@RequestParam(value = "key", required = true) String searchKey) throws Exception {
+		if (logger.isInfoEnabled()) {
+			logger.info("searchUserByKey:");
+		}
+
+		ParamValidateUtils.checkNotNull(searchKey, "key is required");
+
+		List<SessionUserDTO> users = userService.queryByKey(searchKey);
+
+		return ResponseUtil.buildResponseDTO(users);
+	}
+
+	/**
+	 * 用于Eaas通过id查询用户信息。
+	 * 对应于mongodb中client_configuration配置的GetUsersInfoByIds回调地址
+	 *
+	 * @param correlationId
+	 * @param ids
+	 * @return
+	 * @throws Exception
+	 */
+	@ApiOperation(value = "用户查询包含匿名用户", httpMethod = "GET", response = ResponseDTO.class, notes = "获得用户简单信息包含匿名用户")
+	@RequestMapping(value = "/api/user/list/by-ids", method = RequestMethod.GET)
+	@ResponseBody
+	public ResponseDTO getUsersInfoByIds(
+			@RequestHeader(value = "correlationId", required = false) String correlationId,
+			@RequestParam(value = "ids", required = true) String ids) throws Exception {
+		if (logger.isInfoEnabled()) {
+			logger.info("getUsersInfoByIds:");
+		}
+
+		ParamValidateUtils.checkNotNull(ids, "ids is required");
+
+		List<SessionUserDTO> users = userService.queryByIds(ids);
+		return ResponseUtil.buildResponseDTO(users);
+	}
+
+	/**
+	 * 用于Eaas获取用户信息。
+	 * 对应于mongodb中client_configuration配置的VerifyUserByKey回调地址
+	 *
+	 * @param correlationId
+	 * @param searchKey
+	 * @return
+	 * @throws Exception
+	 */
+	@ApiOperation(value = "通过关键字查询用户", httpMethod = "GET", response = ResponseDTO.class, notes = "通过关键字查询用户")
+	@RequestMapping(value = "/api/user", method = RequestMethod.GET)
+	@ResponseBody
+	public ResponseDTO verifyUserByKey(@RequestHeader(value = "correlationId", required = false) String correlationId,
+									   @RequestParam("key") String searchKey) throws Exception {
+
+		if (logger.isInfoEnabled()) {
+			logger.info("verifyUserByKey:");
+		}
+		ParamValidateUtils.checkNotNull(searchKey, "key is required");
+
+		SessionUserDTO dto=userService.findUserByKey(searchKey);
+		return ResponseUtil.buildResponseDTO(dto);
+
 	}
 }

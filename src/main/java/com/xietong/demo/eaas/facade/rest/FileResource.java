@@ -149,7 +149,7 @@ public class FileResource {
 		if (logger.isInfoEnabled()) {
 			logger.info("noticeFileStatus fileId:" + fileId );
 		}
-		boolean result = fileService.notifyFileStatus(fileId, resourceId, status);
+		boolean result = fileService.notifyFileChangeStatus(fileId, resourceId, status);
 		setHttpResponseCode(httpResponse, result);
 	}
 

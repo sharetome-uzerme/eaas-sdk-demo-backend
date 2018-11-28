@@ -2,10 +2,7 @@ package com.xietong.demo.eaas.service;
 
 import com.xietong.demo.eaas.domain.Session;
 import com.xietong.demo.eaas.domain.SessionUser;
-import com.xietong.demo.eaas.facade.dto.SessionCreateACK;
-import com.xietong.demo.eaas.facade.dto.CreateSessionForOpenAppDTO;
-import com.xietong.demo.eaas.facade.dto.CreateSessionForOpenFileWithAppDTO;
-import com.xietong.demo.eaas.facade.dto.SessionInfoDTO;
+import com.xietong.demo.eaas.facade.dto.*;
 
 public interface SessionService {
 	String SESSION_TYPE_EDITING = "EDITING";
@@ -37,20 +34,14 @@ public interface SessionService {
 	 * @param userId
 	 * @return
 	 */
-	SessionInfoDTO joinSession(Long sessionId, String userId);
-
-	/**
-	 * @param sessionId
-	 * @param userId
-	 */
-	void leaveSession(Long sessionId, String userId);
+	SessionJoinACK joinSession(Long sessionId, String userId);
 
 	/**
 	 * remove session
 	 *
 	 * @param sessionId
 	 */
-	void closeSession(Long sessionId);
+	void forceCloseSession(Long sessionId);
 
 	/**
 	 * Get session from cache

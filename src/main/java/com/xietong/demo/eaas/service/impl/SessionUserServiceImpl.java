@@ -19,6 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SessionUserServiceImpl implements SessionUserService {
     private final static Logger logger = Logger.getLogger(SessionUserServiceImpl.class);
 
+    static final String PREFIX = "participant_";
+    static final String INVITE_LIST = PREFIX + "inviteList:";
+    private static ConcurrentHashMap<String, SessionUser> participantInfoConcurrentHashMap = new ConcurrentHashMap();
+
     @Autowired
     SessionStoreService sessionStoreService;
 
@@ -30,19 +34,6 @@ public class SessionUserServiceImpl implements SessionUserService {
             return;
         }
         addParticipantsToInviteList(sessionId, participants);
-    }
-
-    @Override
-    public void participantJoinWithoutLimit(Long sessionId, SessionUser participant) {
-        Session session = sessionStoreService.readSession(sessionId);
-        if (session == null) {
-            logger.warn("Session is not exists :: (" + sessionId + ")");
-            return;
-        }
-        participant.setStatus(SessionUser.Status.Offline);
-        session.addSessionUser(participant);
-        sessionStoreService.writeSession(Long.valueOf(sessionId), session);
-        removeParticipantFromInviteList(sessionId, participant.getUserId());
     }
 
     @Override
@@ -133,9 +124,6 @@ public class SessionUserServiceImpl implements SessionUserService {
         return session.getSessionUsers().contains(new SessionUser(userId));
     }
 
-    static final String PREFIX = "participant_";
-    static final String INVITE_LIST = PREFIX + "inviteList:";
-    private static ConcurrentHashMap<String, SessionUser> participantInfoConcurrentHashMap = new ConcurrentHashMap();
     private SessionUser getParticipantInfo(String participantId) {
         SessionUser userInfo = participantInfoConcurrentHashMap.get(participantId);
         if (userInfo == null) {

@@ -36,17 +36,7 @@ public class FileServiceImpl implements FileService {
 	}
 
 	@Override
-	public boolean modifyFile(String fileId, MultipartFile fileInfo) {
-		try {
-			return createTempFile(fileInfo);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return false;
-	}
-
-	@Override
-	public boolean notifyFileStatus(String fileId, String resourceId, String status) {
+	public boolean notifyFileChangeStatus(String fileId, String resourceId, String status) {
 		if(StringUtils.isEmpty(fileId)){
 			return false;
 		}

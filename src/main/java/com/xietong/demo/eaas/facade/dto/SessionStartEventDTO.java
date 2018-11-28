@@ -11,7 +11,6 @@ public class SessionStartEventDTO {
     private String filePath;
     private String userId;
     private String groupId;
-    private String type;
 	private String appUrl;
     private Boolean isReadOnlyMode = true;
     private Boolean canSaveFile = false;
@@ -69,14 +68,6 @@ public class SessionStartEventDTO {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public Boolean getIsReadOnlyMode() {
@@ -149,7 +140,6 @@ public class SessionStartEventDTO {
                 ", filePath='" + filePath + '\'' +
                 ", userId='" + userId + '\'' +
                 ", groupId='" + groupId + '\'' +
-                ", type='" + type + '\'' +
                 ", isReadOnlyMode=" + isReadOnlyMode +
                 ", isDFSMode=" + isDFSMode +
                 ", canSaveFile=" + canSaveFile +

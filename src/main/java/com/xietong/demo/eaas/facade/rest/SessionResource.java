@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
+import static org.springframework.web.bind.annotation.RequestMethod.PUT;
 
 /**
  * Created by Administrator on 2016/6/18.
@@ -74,7 +75,7 @@ public class SessionResource {
 
 		ParamValidateUtils.checkNotNull(createSessionForOpenFileWithAppDTO.getFileId(), "fileId is required");
 		ParamValidateUtils.checkNotNull( createSessionForOpenFileWithAppDTO.getAppId(), "appId is required");
-		ParamValidateUtils.checkNotNull( createSessionForOpenFileWithAppDTO.getUserId(), "userId is required");
+		ParamValidateUtils.checkNotNull(createSessionForOpenFileWithAppDTO.getUserId(), "userId is required");
 
 		SessionCreateACK sessionCreateACK = sessionService.createSessionForOpenFile(createSessionForOpenFileWithAppDTO);
 
@@ -91,19 +92,19 @@ public class SessionResource {
 	@ResponseBody
 	@RequestMapping(value = "/api/session/{sessionId}", method = DELETE)
 	@ApiOperation(value = "关闭会话", response = ResponseDTO.class)
-	public ResponseDTO closeSession(@ApiParam(value = "会话ID", required = true) @PathVariable Long sessionId) throws Exception {
+	public ResponseDTO forceCloseSession(@ApiParam(value = "会话ID", required = true) @PathVariable Long sessionId) throws Exception {
 		if (logger.isInfoEnabled()) {
 			logger.info("session user session close!!");
 		}
-		sessionService.closeSession(sessionId);
+		sessionService.forceCloseSession(sessionId);
 		return new ResponseDTO();
 	}
 
-
-	private void inputCheck(SessionUserStatusUpdateDTO sessionUserStatusUpdateDTO) {
-		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO, "sessionUserStatusUpdateDTO is required");
-		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getCorrelatedSessionId(), "correlatedSessionId is required");
-		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getStatus(), "status is required");
-		ParamValidateUtils.checkNotNull(sessionUserStatusUpdateDTO.getUserId() , "userId is required");
+	@ResponseBody
+	@RequestMapping(value = "/api/session/{sessionId}/join", method = PUT, consumes = "application/json")
+	@ApiOperation(value = "加入会话",  httpMethod = "PUT",response = ResponseDTO.class, notes = "加入会话")
+	public ResponseDTO requestToJoinSession(@RequestBody SessionJoinDTO event) throws Exception {
+		SessionJoinACK sessionJoinACK = sessionService.joinSession(event.getSessionId(), event.getUserId());
+		return ResponseUtil.buildResponseDTO(sessionJoinACK);
 	}
 }

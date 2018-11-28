@@ -5,7 +5,6 @@ package com.xietong.demo.eaas.facade.dto;
  */
 public class SessionJoinEventDTO {
     private String clientId;
-    private String clientSecret;
     private String sessionId;
     private String userId;
 
@@ -18,14 +17,6 @@ public class SessionJoinEventDTO {
 
     public void setClientId(String clientId) {
         this.clientId = clientId;
-    }
-
-    public String getClientSecret() {
-        return clientSecret;
-    }
-
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
     }
 
     public String getSessionId() {
@@ -48,7 +39,6 @@ public class SessionJoinEventDTO {
     public String toString() {
         return "SessionJoinEventDTO{" +
                 "clientId='" + clientId + '\'' +
-                ", clientSecret='" + clientSecret + '\'' +
                 ", correlatedSessionId='" + sessionId + '\'' +
                 ", userId='" + userId + '\'' +
                 '}';

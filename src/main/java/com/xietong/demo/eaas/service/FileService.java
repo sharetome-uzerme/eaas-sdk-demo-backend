@@ -9,7 +9,6 @@ import java.io.File;
  */
 public interface FileService {
     boolean saveFile(String filePath, MultipartFile fileInfo);
-    boolean modifyFile(String fileId, MultipartFile fileInfo);
-    boolean notifyFileStatus(String fileId, String resourceId, String status);
+    boolean notifyFileChangeStatus(String fileId, String resourceId, String status);
     File downloadFile(String fileId);
 }

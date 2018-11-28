@@ -15,12 +15,6 @@ public interface SessionUserService {
 
 	/**
 	 * @param sessionId
-	 * @param participant
-	 */
-	void participantJoinWithoutLimit(Long sessionId, SessionUser participant);
-
-	/**
-	 * @param sessionId
 	 * @param participantId
 	 */
 	void participantJoin(Long sessionId, String participantId);
